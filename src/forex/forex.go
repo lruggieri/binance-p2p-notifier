@@ -1,8 +1,11 @@
 package forex
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type Client interface {
-	GetCurrentFxRate(fromCurrency, toCurrency string) (float64, error)
+	GetCurrentFxRate(ctx context.Context, fromCurrency, toCurrency string) (float64, error)
 	GetMaxRate() time.Duration
 }

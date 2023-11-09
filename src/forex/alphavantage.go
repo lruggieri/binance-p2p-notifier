@@ -1,6 +1,7 @@
 package forex
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,7 +21,7 @@ const (
 
 type Alphavantage struct{}
 
-func (av *Alphavantage) GetCurrentFxRate(fromCurrency, toCurrency string) (float64, error) {
+func (av *Alphavantage) GetCurrentFxRate(_ context.Context, fromCurrency, toCurrency string) (float64, error) {
 	resp, err := http.Get(
 		fmt.Sprintf("%s/query?function=CURRENCY_EXCHANGE_RATE&from_currency=%s&to_currency=%s&apikey=%s",
 			AlphavantageHost, fromCurrency, toCurrency, AlphavantageAPIKEY))

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -74,7 +75,7 @@ func main() {
 		panic(err)
 	}
 
-	fx := forex.NewAlphavantage()
+	fx := forex.NewFastForexClient(os.Getenv("FASTFOREX_API_KEY"), http.DefaultClient)
 	bnClient := binance.NewClient()
 	notificationClient := notification.NewSlack(slackNotificationWebhookURL)
 	eventClient := event.NewSlack(slackAppToken).
@@ -208,7 +209,7 @@ func startForexLoop(
 		}
 
 		logger.Default.Info("fetching new rate")
-		currentRate, err := fc.GetCurrentFxRate("USD", cfgManager.GetConfig().TargetCurrency)
+		currentRate, err := fc.GetCurrentFxRate(ctx, "USD", cfgManager.GetConfig().TargetCurrency)
 		if err != nil {
 			errChan <- err
 			return
@@ -260,7 +261,9 @@ func startAdvLoop(
 					continue
 				}
 
-				if advRate <= (newRate*(100+cfgManager.GetConfig().MaxSurplusPercentage))/100 {
+				rateSurplus := (advRate/newRate)*100 - 100
+
+				if rateSurplus <= cfgManager.GetConfig().MaxSurplusPercentage {
 					if !isAdvertiserAllowed(cfgManager, adv.Advertiser.NickName) {
 						continue
 					}
@@ -275,11 +278,15 @@ func startAdvLoop(
 
 					if len(methods) > 0 {
 						msg := fmt.Sprintf("advertiser '%s' has a good offer."+
-							"\n\tRate: %f"+
+							"\n\tFX rate: %f"+
+							"\n\tOffer rate: %f"+
+							"\n\tDistance: %f"+
 							"\n\tAmount: %s"+
 							"\n\tMethods: %s\n",
 							adv.Advertiser.NickName,
+							newRate,
 							advRate,
+							rateSurplus,
 							adv.Adv.SurplusAmount,
 							strings.Join(methods, ","))
 						if err = notificationClient.SendMessage(msg); err != nil {
